@@ -1,0 +1,126 @@
+{
+  "name": "Instantly -> Click Up CRM — deduped",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "instantly-lead",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "id": "7d770114-bff3-4d18-90e1-0b13bc1e8ea4",
+      "name": "Webhook",
+      "webhookId": "11111111-1111-4111-8111-111111111111"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "9e9d72d0-0305-4e5b-9d75-69614127fd25", "name": "Name", "value": "={{ $json.body.firstName }} {{ $json.body.lastName }}", "type": "string" },
+            { "id": "25209265-b029-4c69-887c-7c94711e35a2", "name": "Company", "value": "={{ $json.body.companyName }}", "type": "string" },
+            { "id": "ee2c4e62-64c9-4ffb-9d02-5e6da7f8ac1f", "name": "Job Title", "value": "={{ $json.body.jobTitle }}", "type": "string" },
+            { "id": "4bf48c6c-5d5f-4166-b56a-c9db73e3145f", "name": "Email", "value": "={{ $json.body.lead_email }}", "type": "string" },
+            { "id": "09d0bb4d-6be5-42e7-acf9-1ce482ed6448", "name": "phone", "value": "={{ $json.body.phone }}", "type": "string" },
+            { "id": "9ff31b3b-426a-4a39-b38e-a93f9b3f8a58", "name": "state", "value": "={{ $json.body.state }}", "type": "string" },
+            { "id": "8ff1f8a7-8de8-46c1-ad1a-89fd71a65e21", "name": "LinkedIn", "value": "={{ $json.body.linkedIn }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [208, 0],
+      "id": "e0b17da9-4277-49a7-8fcb-8493744c2847",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "url": "https://api.clickup.com/api/v2/list/YOUR_CLICKUP_LIST_ID/task",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "clickUpOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "include_closed", "value": "true" },
+            { "name": "subtasks", "value": "true" },
+            { "name": "custom_fields", "value": "={{ JSON.stringify([{\"field_id\":\"YOUR_CLICKUP_EMAIL_FIELD_ID\",\"operator\":\"=\",\"value\": ($json.Email || '').toLowerCase().trim()}]) }}" }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [416, 0],
+      "id": "f1a2b3c4-d5e6-4f70-8a91-b2c3d4e5f607",
+      "name": "Check Existing in ClickUp",
+      "credentials": {
+        "clickUpOAuth2Api": { "id": "REPLACE_CLICKUP_CRED", "name": "ClickUp account" }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "dup-check-1",
+              "leftValue": "={{ ($json.tasks ?? []).length > 0 }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [640, 0],
+      "id": "a9b8c7d6-e5f4-4a3b-9c2d-1e0f9a8b7c6d",
+      "name": "Already in CRM?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [864, -112],
+      "id": "0c1d2e3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+      "name": "Duplicate — skip"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "team": "9014822329",
+        "space": "90144910722",
+        "folder": "90148332086",
+        "list": "YOUR_CLICKUP_LIST_ID",
+        "name": "={{ $('Edit Fields').item.json.Name }}",
+        "additionalFields": {
+          "customFieldsJson": "=[\n  {\n    \"id\": \"YOUR_CLICKUP_COMPANY_FIELD_ID\",\n    \"value\": \"{{ $('Edit Fields').item.json.Company }}\"\n  },\n  {\n    \"id\": \"YOUR_CLICKUP_EMAIL_FIELD_ID\",\n    \"value\": \"{{ $('Edit Fields').item.json.Email }}\"\n  },\n  {\n    \"id\": \"YOUR_CLICKUP_PHONE_FIELD_ID\",\n    \"value\": \"{{ $('Edit Fields').item.json.phone }}\"\n  },\n  {\n    \"id\": \"YOUR_CLICKUP_LINKEDIN_FIELD_ID\",\n    \"value\": \"{{ $('Edit Fields').item.json.LinkedIn }}\"\n  },\n  {\n    \"id\": \"YOUR_CLICKUP_STATE_FIELD_ID\",\n    \"value\": \"{{ $('Edit Fields').item.json.state }}\"\n  }\n]"
+        }
+      },
+      "type": "n8n-nodes-base.clickUp",
+      "typeVersion": 1,
+      "position": [864, 112],
+      "id": "cd420873-1ea0-4e2c-8ab5-dace88162580",
+      "name": "Create a task",
+      "credentials": {
+        "clickUpOAuth2Api": { "id": "REPLACE_CLICKUP_CRED", "name": "ClickUp account" }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]] },
+    "Edit Fields": { "main": [[{ "node": "Check Existing in ClickUp", "type": "main", "index": 0 }]] },
+    "Check Existing in ClickUp": { "main": [[{ "node": "Already in CRM?", "type": "main", "index": 0 }]] },
+    "Already in CRM?": {
+      "main": [
+        [{ "node": "Duplicate — skip", "type": "main", "index": 0 }],
+        [{ "node": "Create a task", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1", "binaryMode": "separate" }
+}

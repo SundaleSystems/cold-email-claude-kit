@@ -1,0 +1,506 @@
+{
+  "name": "Instantly Positive Reply → Phone Lookup → Email Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "instantly-positive-reply-CHANGE-ME",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "n01",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "instantly-positive-reply-CHANGE-ME"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "ALERT_TO",
+              "value": "you@yourcompany.com",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "FPS_ACTOR",
+              "value": "jungle_synthesizer~fastpeoplesearch-people-search-scraper",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "TPS_ACTOR",
+              "value": "jungle_synthesizer~truepeoplesearch-people-search-scraper",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "MAX_RECORDS",
+              "value": 3,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "n02",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ (() => { const b = $('Webhook').item.json.body ?? $('Webhook').item.json; const et = String(b.event_type ?? '').toLowerCase(); return /(interested|meeting[_ ]?booked|positive)/.test(et) && !/not[_ ]?interested/.test(et); })() }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "n03",
+      "name": "Is Positive Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "getMany",
+        "returnAll": false,
+        "limit": 1,
+        "filters": {
+          "search": "={{ ($('Webhook').item.json.body ?? $('Webhook').item.json).lead_email }}"
+        }
+      },
+      "id": "n04",
+      "name": "Get Lead Record",
+      "type": "n8n-nodes-instantly.instantly",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "credentials": {
+        "instantlyApi": {
+          "id": "REPLACE_INSTANTLY_CRED",
+          "name": "Instantly API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.instantly.ai/api/v2/emails",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "instantlyApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "email_type",
+              "value": "received"
+            },
+            {
+              "name": "lead",
+              "value": "={{ ($('Webhook').item.json.body ?? $('Webhook').item.json).lead_email }}"
+            },
+            {
+              "name": "sort_order",
+              "value": "desc"
+            },
+            {
+              "name": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "n05",
+      "name": "Get Latest Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "credentials": {
+        "instantlyApi": {
+          "id": "REPLACE_INSTANTLY_CRED",
+          "name": "Instantly API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// Merge webhook payload + Instantly lead record + latest reply into one clean object.\nconst whRaw = $('Webhook').item.json;\nconst wh = whRaw.body ?? whRaw; // Webhook v2 nests payload under .body\n\nconst email = String(wh.lead_email ?? wh.email ?? '').trim().toLowerCase();\n\n// --- Lead record (custom_variables carry industry / location / linkedin_url) ---\nlet leadRec = {};\ntry {\n  const lr = $('Get Lead Record').item.json;\n  leadRec = (lr.items && lr.items[0]) || (lr.data && lr.data[0]) || (Array.isArray(lr) ? lr[0] : null) || {};\n  if (leadRec.error) leadRec = {};\n} catch (e) { /* node failed -> degrade gracefully */ }\nconst cv = leadRec.custom_variables ?? leadRec.customVariables ?? {};\n\n// --- Latest reply from this lead (for signature parsing) ---\nlet replyText = '', replyHtml = '';\ntry {\n  const all = $('Get Latest Reply').all().map(i => i.json);\n  const items = all.flatMap(x => x.items ?? x.data ?? (x.lead ? [x] : []));\n  const mine = items.filter(e => String(e.lead ?? '').toLowerCase() === email);\n  mine.sort((a, b) => new Date(b.timestamp_email ?? b.timestamp_created ?? 0) - new Date(a.timestamp_email ?? a.timestamp_created ?? 0));\n  if (mine.length) {\n    replyText = mine[0].body?.text ?? '';\n    replyHtml = mine[0].body?.html ?? '';\n  }\n} catch (e) { /* no reply body -> signature source yields nothing */ }\n\n// --- Location parse: Sales Nav free text -> city + 2-letter state ---\nconst STATES = {'alabama':'AL','alaska':'AK','arizona':'AZ','arkansas':'AR','california':'CA','colorado':'CO','connecticut':'CT','delaware':'DE','florida':'FL','georgia':'GA','hawaii':'HI','idaho':'ID','illinois':'IL','indiana':'IN','iowa':'IA','kansas':'KS','kentucky':'KY','louisiana':'LA','maine':'ME','maryland':'MD','massachusetts':'MA','michigan':'MI','minnesota':'MN','mississippi':'MS','missouri':'MO','montana':'MT','nebraska':'NE','nevada':'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND','ohio':'OH','oklahoma':'OK','oregon':'OR','pennsylvania':'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD','tennessee':'TN','texas':'TX','utah':'UT','vermont':'VT','virginia':'VA','washington':'WA','west virginia':'WV','wisconsin':'WI','wyoming':'WY','district of columbia':'DC','washington dc':'DC','washington d.c.':'DC'};\nconst ABBREVS = new Set(Object.values(STATES));\nconst METROS = {'san francisco bay':['San Francisco','CA'],'greater boston':['Boston','MA'],'greater new york city':['New York','NY'],'new york city metropolitan':['New York','NY'],'greater chicago':['Chicago','IL'],'greater seattle':['Seattle','WA'],'greater los angeles':['Los Angeles','CA'],'los angeles metropolitan':['Los Angeles','CA'],'dallas-fort worth metroplex':['Dallas','TX'],'greater houston':['Houston','TX'],'greater philadelphia':['Philadelphia','PA'],'atlanta metropolitan':['Atlanta','GA'],'greater atlanta':['Atlanta','GA'],'miami-fort lauderdale':['Miami','FL'],'greater miami':['Miami','FL'],'greater denver':['Denver','CO'],'denver metropolitan':['Denver','CO'],'greater phoenix':['Phoenix','AZ'],'phoenix metropolitan':['Phoenix','AZ'],'greater minneapolis-st. paul':['Minneapolis','MN'],'greater san diego':['San Diego','CA'],'san diego metropolitan':['San Diego','CA'],'greater austin':['Austin','TX'],'austin metropolitan':['Austin','TX'],'washington dc-baltimore':['Washington','DC'],'greater washington':['Washington','DC'],'greater nashville':['Nashville','TN'],'nashville metropolitan':['Nashville','TN'],'greater tampa bay':['Tampa','FL'],'tampa bay':['Tampa','FL'],'greater orlando':['Orlando','FL'],'greater st. louis':['St. Louis','MO'],'greater detroit':['Detroit','MI'],'detroit metropolitan':['Detroit','MI'],'greater pittsburgh':['Pittsburgh','PA'],'greater charlotte':['Charlotte','NC'],'charlotte metro':['Charlotte','NC'],'greater raleigh':['Raleigh','NC'],'raleigh-durham':['Raleigh','NC'],'greater portland':['Portland','OR'],'portland metropolitan':['Portland','OR'],'salt lake city metropolitan':['Salt Lake City','UT'],'greater salt lake city':['Salt Lake City','UT'],'las vegas metropolitan':['Las Vegas','NV'],'greater las vegas':['Las Vegas','NV'],'greater indianapolis':['Indianapolis','IN'],'greater columbus':['Columbus','OH'],'columbus, ohio metropolitan':['Columbus','OH'],'greater cleveland':['Cleveland','OH'],'cincinnati metropolitan':['Cincinnati','OH'],'greater cincinnati':['Cincinnati','OH'],'kansas city metropolitan':['Kansas City','MO'],'greater kansas city':['Kansas City','MO'],'greater sacramento':['Sacramento','CA'],'sacramento metropolitan':['Sacramento','CA'],'greater milwaukee':['Milwaukee','WI'],'greater jacksonville':['Jacksonville','FL'],'greater san antonio':['San Antonio','TX'],'san antonio metropolitan':['San Antonio','TX'],'oklahoma city metropolitan':['Oklahoma City','OK'],'greater richmond':['Richmond','VA'],'richmond metropolitan':['Richmond','VA'],'greater hartford':['Hartford','CT'],'greater new orleans':['New Orleans','LA'],'greater memphis':['Memphis','TN'],'louisville metropolitan':['Louisville','KY'],'greater louisville':['Louisville','KY'],'greater buffalo':['Buffalo','NY'],'buffalo-niagara falls':['Buffalo','NY'],'omaha metropolitan':['Omaha','NE'],'greater omaha':['Omaha','NE'],'greater tucson':['Tucson','AZ'],'greater albuquerque':['Albuquerque','NM'],'greater boise':['Boise','ID'],'boise metropolitan':['Boise','ID']};\n\nfunction parseLocation(loc) {\n  if (!loc || typeof loc !== 'string') return { city: null, state: null };\n  const raw = loc.trim().replace(/,?\\s*(united states|usa|u\\.s\\.a?\\.?)$/i, '').trim();\n  if (!raw) return { city: null, state: null };\n  const lower = raw.toLowerCase();\n\n  // Metro-area phrasing (\"San Francisco Bay Area\", \"Greater Boston Area\")\n  const metroKey = lower.replace(/\\s*area$/,'').replace(/\\s*region$/,'').trim();\n  for (const [k, v] of Object.entries(METROS)) {\n    if (metroKey.includes(k)) return { city: v[0], state: v[1] };\n  }\n\n  const parts = raw.split(',').map(p => p.trim()).filter(Boolean);\n  if (parts.length >= 2) {\n    const city = parts[0];\n    const stRaw = parts[1];\n    const stLower = stRaw.toLowerCase();\n    if (STATES[stLower]) return { city, state: STATES[stLower] };\n    const ab = stRaw.replace(/\\./g, '').toUpperCase();\n    if (ABBREVS.has(ab)) return { city, state: ab };\n    return { city, state: null };\n  }\n  // Single token: maybe it's just a state\n  if (STATES[lower]) return { city: null, state: STATES[lower] };\n  const ab1 = raw.replace(/\\./g, '').toUpperCase();\n  if (ABBREVS.has(ab1)) return { city: null, state: ab1 };\n  return { city: raw, state: null };\n}\n\nconst locField = cv.location ?? leadRec.location ?? '';\nconst { city, state } = parseLocation(String(locField));\n\nreturn [{ json: {\n  event_type: wh.event_type ?? '',\n  campaign_name: wh.campaign_name ?? '',\n  firstName: wh.firstName ?? leadRec.first_name ?? cv.first_name ?? '',\n  lastName: wh.lastName ?? leadRec.last_name ?? cv.last_name ?? '',\n  email,\n  companyName: wh.companyName ?? leadRec.company_name ?? cv.company_name ?? '',\n  industry: cv.company_industry ?? '',\n  locationRaw: String(locField),\n  city, state,\n  linkedinUrl: cv.linkedin_url ?? '',\n  companyPhone: String(cv.company_phone ?? wh.phone ?? ''),\n  replyText, replyHtml,\n} }];\n"
+      },
+      "id": "n06",
+      "name": "Build Search Keys",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// Extract phone numbers from the lead's reply signature. Free, always runs.\nconst k = $json;\n\nfunction stripHtml(html) {\n  return String(html || '')\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<\\/(p|div|tr|li)>/gi, '\\n')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&');\n}\n\nlet text = k.replyText && k.replyText.trim() ? k.replyText : stripHtml(k.replyHtml);\n\n// Cut quoted/forwarded history so we don't scrape our own signature back\nconst cutMarkers = [/\\nOn .{5,120}wrote:/, /-{3,}\\s*Original Message\\s*-{3,}/i, /\\nFrom:\\s.+\\nSent:\\s/i, /\\n>{1}\\s/];\nfor (const m of cutMarkers) {\n  const match = text.match(m);\n  if (match && match.index > 40) text = text.slice(0, match.index);\n}\n\nconst companyDigits = String(k.companyPhone || '').replace(/\\D/g, '').slice(-10);\n\nconst sigNumbers = [];\nconst seen = new Set();\nconst re = /(?:\\+?1[\\s.\\-]?)?\\(?([2-9]\\d{2})\\)?[\\s.\\-]?(\\d{3})[\\s.\\-]?(\\d{4})\\b/g;\nlet m;\nwhile ((m = re.exec(text)) !== null) {\n  const digits = (m[1] + m[2] + m[3]);\n  if (seen.has(digits)) continue;\n  seen.add(digits);\n  if (companyDigits && digits === companyDigits) continue; // company switchboard\n\n  const before = text.slice(Math.max(0, m.index - 25), m.index).toLowerCase();\n  let type = 'unknown', label = 'unlabeled';\n  if (/\\bf(ax)?\\s*[.:]/.test(before) || /\\bfax\\b/.test(before)) continue; // fax -> discard\n  if (/\\b(m|c)\\s*[.:]|\\bcell\\b|\\bmob(ile)?\\b|\\btext\\b/.test(before)) { type = 'mobile'; label = 'labeled mobile/cell'; }\n  else if (/\\b(o|t|d|w)\\s*[.:]|\\btel\\b|\\bdirect\\b|\\boffice\\b|\\bmain\\b|\\bwork\\b|\\bphone\\s*[.:]/.test(before)) { type = 'office'; label = 'labeled office/direct'; }\n\n  sigNumbers.push({ digits, type, label });\n}\n\nreturn [{ json: { ...k, sigNumbers } }];\n"
+      },
+      "id": "n07",
+      "name": "Parse Signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.state }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "n08",
+      "name": "Has US State?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "apifyApi",
+        "resource": "Actors",
+        "operation": "Run actor and get dataset",
+        "actorId": "={{ $('Config').item.json.FPS_ACTOR }}",
+        "customBody": "={{ (() => { const k = $('Parse Signature').item.json; const b = { searchMode: 'name', firstName: k.firstName, lastName: k.lastName, state: k.state, maxItems: $('Config').item.json.MAX_RECORDS }; if (k.city) b.city = k.city; return JSON.stringify(b); })() }}",
+        "timeout": 240,
+        "memory": 1024,
+        "maxTotalChargeUsd": 1,
+        "build": ""
+      },
+      "id": "n09",
+      "name": "FastPeopleSearch",
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        200
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "credentials": {
+        "apifyApi": {
+          "id": "REPLACE_APIFY_CRED",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "apifyApi",
+        "resource": "Actors",
+        "operation": "Run actor and get dataset",
+        "actorId": "={{ $('Config').item.json.TPS_ACTOR }}",
+        "customBody": "={{ (() => { const k = $('Parse Signature').item.json; const b = { searchMode: 'name', firstName: k.firstName, lastName: k.lastName, state: k.state, maxItems: $('Config').item.json.MAX_RECORDS }; if (k.city) b.city = k.city; return JSON.stringify(b); })() }}",
+        "timeout": 240,
+        "memory": 1024,
+        "maxTotalChargeUsd": 1,
+        "build": ""
+      },
+      "id": "n10",
+      "name": "TruePeopleSearch",
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        200
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "credentials": {
+        "apifyApi": {
+          "id": "REPLACE_APIFY_CRED",
+          "name": "Apify API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.leadmagic.io/v1/people/mobile-finder",
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const k = $('Parse Signature').item.json; const b = { work_email: k.email }; if (k.linkedinUrl) b.profile_url = k.linkedinUrl; return JSON.stringify(b); })() }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "n11",
+      "name": "LeadMagic Mobile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2000,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_LEADMAGIC_CRED",
+          "name": "LeadMagic"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\n// Collect candidates from all four sources, normalize, dedupe, score, build the alert email.\nconst k = $('Parse Signature').item.json;\nconst cfg = $('Config').item.json;\n\nfunction digitsOf(s) { return String(s || '').replace(/\\D/g, '').slice(-10); }\nfunction pretty(d) { return d.length === 10 ? `+1 (${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : d; }\nfunction esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\n\nconst companyDigits = digitsOf(k.companyPhone);\nconst candidates = []; // { digits, score, type, source, note }\n\n// --- 1. Email signature ---\nfor (const n of (k.sigNumbers || [])) {\n  if (n.type === 'mobile')      candidates.push({ digits: n.digits, score: 95, type: 'mobile',  source: 'email signature', note: n.label });\n  else if (n.type === 'office') candidates.push({ digits: n.digits, score: 40, type: 'office',  source: 'email signature', note: n.label });\n  else                          candidates.push({ digits: n.digits, score: 70, type: 'unknown', source: 'email signature', note: n.label });\n}\n\n// --- 2 & 3. FastPeopleSearch / TruePeopleSearch (Apify dataset items) ---\nfunction harvestScraper(nodeName, sourceLabel) {\n  let items = [];\n  try { items = $(nodeName).all().map(i => i.json); } catch (e) { return; }\n  for (const rec of items) {\n    if (!rec || rec.error || !Array.isArray(rec.phones)) continue;\n    const recName = String(rec.name ?? `${rec.firstName ?? ''} ${rec.lastName ?? ''}`).toLowerCase();\n    const fn = String(k.firstName).toLowerCase(), ln = String(k.lastName).toLowerCase();\n    if (fn && ln && !(recName.includes(fn) && recName.includes(ln))) continue; // wrong person\n    const addr = String(rec.currentAddress ?? '').toLowerCase();\n    const cityMatch = !!(k.city && addr.includes(String(k.city).toLowerCase()));\n    const base = cityMatch ? 75 : 50;\n    const locNote = cityMatch ? `${k.city}, ${k.state} match` : `${k.state || 'state'}-level match only`;\n    rec.phones.forEach((p, idx) => {\n      const d = digitsOf(p);\n      if (d.length !== 10 || d === companyDigits) return;\n      // First listed number is typically the primary/most recent line\n      candidates.push({ digits: d, score: idx === 0 ? base : base - 10, type: 'unknown', source: sourceLabel, note: `${locNote}${idx === 0 ? ', primary listing' : ''}` });\n    });\n  }\n}\nharvestScraper('FastPeopleSearch', 'FastPeopleSearch');\nharvestScraper('TruePeopleSearch', 'TruePeopleSearch');\n\n// --- 4. LeadMagic mobile-finder ---\ntry {\n  const lm = $('LeadMagic Mobile').item.json;\n  const d = digitsOf(lm.mobile_number);\n  if (d.length === 10) candidates.push({ digits: d, score: 90, type: 'mobile', source: 'LeadMagic', note: 'B2B mobile-finder' });\n} catch (e) { /* skipped or failed */ }\n\n// --- Dedupe (keep best score, remember all sources) + cross-source bonus ---\nconst byDigits = new Map();\nfor (const c of candidates) {\n  const cur = byDigits.get(c.digits);\n  if (!cur) byDigits.set(c.digits, { ...c, sources: new Set([c.source]) });\n  else {\n    cur.sources.add(c.source);\n    if (c.score > cur.score) { cur.score = c.score; cur.note = c.note; cur.source = c.source; }\n    if (c.type === 'mobile') cur.type = 'mobile';\n    else if (cur.type === 'unknown' && c.type === 'office') cur.type = 'office';\n  }\n}\nconst merged = [...byDigits.values()].map(c => {\n  if (c.sources.size >= 2) { c.score = Math.min(99, c.score + 15); c.note += ` — corroborated by ${c.sources.size} sources`; }\n  c.sourceList = [...c.sources].join(' + ');\n  return c;\n});\n\nconst mobiles = merged.filter(c => c.type !== 'office').sort((a, b) => b.score - a.score);\nconst others  = merged.filter(c => c.type === 'office').sort((a, b) => b.score - a.score);\n\n// --- Email ---\nconst subject = `New Lead: ${k.firstName} ${k.lastName} phone number`.replace(/\\s+/g, ' ').trim();\n\nfunction lines(list) {\n  return list.map(c => `${esc(pretty(c.digits))} &mdash; ${c.score}% <span style=\"color:#666\">(${esc(c.sourceList)}: ${esc(c.note)})</span>`).join('<br>');\n}\n\nlet numbersHtml;\nif (!merged.length) {\n  numbersHtml = '<em>No phone numbers found across signature, FastPeopleSearch, TruePeopleSearch, or LeadMagic.</em>';\n} else {\n  numbersHtml = mobiles.length ? `<strong>Cell numbers found:</strong><br>${lines(mobiles)}` : '<em>No cell numbers found.</em>';\n  if (others.length) numbersHtml += `<br><br><strong>Other numbers found:</strong><br>${lines(others)}`;\n}\n\nconst html = [\n  `<strong>${esc(k.companyName || 'Unknown company')}</strong>`,\n  esc(k.industry || 'Industry unknown'),\n  esc(`${k.firstName} ${k.lastName}`.trim()),\n  '',\n  numbersHtml,\n  '',\n  `<span style=\"color:#999;font-size:12px\">Campaign: ${esc(k.campaign_name)} &middot; Lead: ${esc(k.email)}${k.locationRaw ? ' &middot; ' + esc(k.locationRaw) : ''}</span>`,\n].join('<br>');\n\nreturn [{ json: { to: cfg.ALERT_TO, subject, html, mobilesFound: mobiles.length, othersFound: others.length } }];\n"
+      },
+      "id": "n12",
+      "name": "Score & Build Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "n13",
+      "name": "Send Alert to Me",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2400,
+        300
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_GMAIL_CRED",
+          "name": "Gmail (you@yourcompany.com)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Is Positive Event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Positive Event?": {
+      "main": [
+        [
+          {
+            "node": "Get Lead Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Get Lead Record": {
+      "main": [
+        [
+          {
+            "node": "Get Latest Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Latest Reply": {
+      "main": [
+        [
+          {
+            "node": "Build Search Keys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Search Keys": {
+      "main": [
+        [
+          {
+            "node": "Parse Signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Signature": {
+      "main": [
+        [
+          {
+            "node": "Has US State?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has US State?": {
+      "main": [
+        [
+          {
+            "node": "FastPeopleSearch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LeadMagic Mobile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FastPeopleSearch": {
+      "main": [
+        [
+          {
+            "node": "TruePeopleSearch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TruePeopleSearch": {
+      "main": [
+        [
+          {
+            "node": "LeadMagic Mobile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LeadMagic Mobile": {
+      "main": [
+        [
+          {
+            "node": "Score & Build Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score & Build Email": {
+      "main": [
+        [
+          {
+            "node": "Send Alert to Me",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "template"
+  },
+  "tags": []
+}

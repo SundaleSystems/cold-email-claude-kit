@@ -1,0 +1,46 @@
+{
+  "client": "example-client",
+  "profile_dir": "profiles/example-client",
+  "targets": {
+    "min_emails_per_day": 1500,
+    "avg_touches_per_lead": 3,
+    "min_runway_days": 5,
+    "max_bounce_rate_7d": 0.03,
+    "min_warmup_score": 90,
+    "max_daily_limit_step": 500,
+    "max_verification_age_days": 30
+  },
+  "autonomy": {
+    "may_activate_campaigns": false,
+    "may_pause_campaigns": false,
+    "may_raise_daily_limit": false,
+    "may_add_leads_from_approved_stock": false,
+    "may_clone_campaign_from_approved_stock": false,
+    "may_create_draft_for_unapproved_stock": false,
+    "may_spend_on_lead_sourcing": false,
+    "max_leads_per_upload": 5000
+  },
+  "inbox_pool": {
+    "exclude_tags": ["retired", "insurance-pool"],
+    "min_status": 1
+  },
+  "ignore_campaign_ids": [],
+  "resume_allowlist": [],
+  "lead_stock": [
+    {
+      "id": "example-icp-batch-1",
+      "path": "Lead-Lists/4-Final-Lead-Lists/example-icp_2026-01-01_final.csv",
+      "status": "approved",
+      "verified": "millionverifier ok (2026-01-01)",
+      "verified_date": "2026-01-01",
+      "copy_source_campaign_id": "00000000-0000-0000-0000-000000000000",
+      "campaign_name": "Example ICP | Batch 1",
+      "column_map": {
+        "company_name": "company",
+        "website": "corporate_website",
+        "title": "job_title"
+      },
+      "note": "status: approved | hold | used | needs_verification | needs_copy | needs_personalization. copy_source_campaign_id = an existing Instantly campaign whose sequence gets cloned for this list."
+    }
+  ]
+}

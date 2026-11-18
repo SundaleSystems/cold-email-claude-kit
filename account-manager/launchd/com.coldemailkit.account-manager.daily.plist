@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.coldemailkit.account-manager.daily</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/path/to/cold-email-claude-kit/account-manager/run-daily.sh</string>
+    <string>example-client</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>30</integer></dict>
+  <key>EnvironmentVariables</key>
+  <dict><key>AM_CLAUDE_STEP</key><string>0</string></dict>
+  <key>StandardOutPath</key><string>/path/to/cold-email-claude-kit/account-manager/logs/launchd.out</string>
+  <key>StandardErrorPath</key><string>/path/to/cold-email-claude-kit/account-manager/logs/launchd.err</string>
+  <key>RunAtLoad</key><false/>
+</dict>
+</plist>

@@ -1,0 +1,101 @@
+{
+  "pulled_from": "<your-project-ref>",
+  "sheets": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "key": "global",
+      "is_global": true,
+      "offer_name": null,
+      "original_pitch": null,
+      "sender_name": null,
+      "sender_role": null,
+      "sender_signoff": null,
+      "offer_facts": "FILL ME IN: company-wide facts. Who your company is, what it does, where it operates. Only facts you are happy for a prospect to read.",
+      "high_level_answer": null,
+      "pricing_policy": "no_price_before_call",
+      "pricing_facts": null,
+      "lead_magnet": null,
+      "calendly_url": null,
+      "common_questions": [],
+      "ideal_replies": [],
+      "voice_rules": "Plain text only. No em-dashes. No markdown. No bullet points. Sound like a busy human, not a newsletter.",
+      "max_words": 120,
+      "banned_phrases": [],
+      "business_noun": null,
+      "timezone": "America/New_York",
+      "price_reply": null
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "key": "ai-cold-email-system",
+      "is_global": false,
+      "offer_name": "AI Cold Email System",
+      "original_pitch": "Hey {{firstName}},\n\nCame across you on LinkedIn. Thought it made sense to reach out.\n\nI install an AI cold email system that books qualified sales calls ~ done-for-you.\n\nNo Risk ~ No setup fee. No long term contracts.\n\nDo you have 10mins to chat about it tmw?\n\nAlex",
+      "sender_name": "Alex",
+      "sender_role": "Founder, Your Company",
+      "sender_signoff": "Alex",
+      "offer_facts": "Done-for-you AI cold email lead gen system that books qualified sales calls. No setup fee. No long-term contracts. Installed and run for the client. Clients typically get 8-15 qualified conversations per month.",
+      "high_level_answer": "We build an AI-powered cold email system that identifies your ideal prospects and sends personalized outreach at scale to generate interested replies and sales opportunities.",
+      "pricing_policy": "quote_range",
+      "pricing_facts": "$X-Yk/month (FILL ME IN)",
+      "lead_magnet": "100 ICP-matched leads & 3 copy angles",
+      "calendly_url": "https://calendly.com/your-name/30min",
+      "common_questions": [],
+      "ideal_replies": [
+        "Hi Sam,\n\nSounds good. I'll shoot over a google meet invite for Tuesday 3pm EST.\n\nLook forward to connecting.\n\nAlex"
+      ],
+      "voice_rules": "Short sentences. Sound like a busy human, not a newsletter. No em-dashes, no markdown, no bullet points.",
+      "max_words": 150,
+      "banned_phrases": [
+        "just checking in",
+        "circle back",
+        "synergy",
+        "revolutionize",
+        "game-changer"
+      ],
+      "business_noun": "business",
+      "timezone": "America/New_York",
+      "price_reply": null
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000003",
+      "key": "speed-to-lead",
+      "is_global": false,
+      "offer_name": "Speed to Lead",
+      "original_pitch": "All 7 variants of the opening email, subject line \"inbound leads\". This prospect received exactly one of them.\n\n--- Variant A ---\nHi {{firstName}},\n\nMost automated lead follow up sounds automated.\n\nI built a system that learns how your team talks, then responds to new leads the same way your salespeople would.\n\nIt can reply, follow up, and hand the conversation to your team when needed.\n\nI'll build yours for free so you can test it.\n\nOpen to a 15min look?\n\n{{accountSignature}}\n\n--- Variant B ---\nHi {{firstName}},\n\nCurious if you're losing qualified leads due to slow response times, whether they come in through, lead forms, email, or paid ads.\n\nI help businesses like yours never miss any qualified leads so you can service more clients and generate more revenue.\n\nI just did this for a client in NYC - they were losing qualified leads due to slow response time. I set the system up in less than 7 days, and it helped them close an additional 3 new clients in the first 2 weeks.\n\nI'll set it up for free. {{RANDOM | You only pay if it gets you more clients. | Try it, let me know if you wanna keep it | See if you like it. | See the results live. | Call you in 7 days to see if you want to keep it. }}\n\n{{accountSignature}}\n\n--- Variant C ---\nHi {{firstName}},\n\nI'm helping businesses turn more of their inbound leads into actual sales conversations.\n\nNo new ads. No more leads.\n\nJust getting more from the leads you're already generating.\n\nI'll build the system for free and let you test it before paying anything.\n\nOpen to a quick look?\n\n{{accountSignature}}\n\n--- Variant D ---\nHi {{firstName}},\n\nMost businesses don't have a lead problem.\n\nThey have a follow up problem.\n\nNew leads come in from forms, email, ads, and directories, and someone has to notice them, reply, follow up, and get them to the right salesperson.\n\nI automate that whole process.\n\nOpen to seeing it?\n\n{{accountSignature}}\n\n--- Variant E ---\nHi {{firstName}},\n\nYou can spend $100+ getting someone to raise their hand, then lose them because nobody replies fast enough.\n\nI built a system that contacts every new lead in under 60 seconds, even when your team is busy.\n\nI'll set it up free and let you test it.\n\nWorth a 15 min look?\n\n{{accountSignature}}\n\n--- Variant F ---\nHi {{firstName}},\n\nI built {{RANDOM | an AI system | a system}} that replies to every lead inquiry in under {{RANDOM | 60secs. | 5mins.}}\n\nI'll build it and install it for you free. Then let me know if you want to keep it.\n\nCan you do a 15 min call to show you how it works?\n\n{{accountSignature}}\n\n--- Variant G ---\nHi {{firstName}},\n\nI'll build you a system that responds to every inbound lead in under 60 seconds, follows up automatically, and gets more of the leads you're already paying for into conversations with your sales team.\n\nI'll install it for free and run it for 14 days.\n\nIf it doesn't improve your lead-to-conversation rate, you don't pay.\n\n{{accountSignature}}",
+      "sender_name": "Alex",
+      "sender_role": "Founder, Your Company",
+      "sender_signoff": "Alex",
+      "offer_facts": "Speed to Lead is a done-for-you inbound lead response system. It contacts every new inbound lead in under 60 seconds, across email, text message and phone, follows up automatically until the lead responds, and hands the live conversation to the client's own salesperson when someone is ready to talk. It works on leads from web forms, email enquiries, paid ads and directories. The system is trained on how the client's team already talks, so replies sound like their salespeople rather than an autoresponder.\n\nCommercial model: We build and install the full working system for free. The client runs it on their own live leads and then decides whether to keep it. There is no fixed trial length. If they keep it there is an implementation fee plus a monthly fee, both scoped on the call. Never state any fee, number or range in an email reply.\n\nOne variant of the cold email offered to install the system free and run it for 14 days, with no payment if it does not improve their lead to conversation rate. If a prospect refers to those terms, they stand. Otherwise there is no fixed trial length.\n\nCleared proof point (the client is never named): a services business in NYC was losing qualified leads to slow response times. The system was set up in under 7 days and helped them close an additional 3 new clients in the first 2 weeks.\n\nBoundaries: do not promise a setup timeline for this prospect, the under 7 days figure is a past result and not a commitment. Never name any client. Do not state or imply a price. Do not promise a specific number of leads, clients or revenue.",
+      "high_level_answer": "We install a system that answers every new inbound lead in under 60 seconds and keeps following up until they respond, then routes the live conversation to your team. We build it for free so you can test it on your own leads first.",
+      "pricing_policy": "no_price_before_call",
+      "pricing_facts": null,
+      "lead_magnet": null,
+      "calendly_url": "https://calendly.com/your-name/30min",
+      "common_questions": [],
+      "ideal_replies": [
+        "Hi Sam,\n\nSounds good. I'll shoot over a google meet invite for Tuesday 3pm EST.\n\nLook forward to connecting.\n\nAlex"
+      ],
+      "voice_rules": "Short sentences. Sound like a busy human, not a newsletter. No em-dashes, no markdown, no bullet points.",
+      "max_words": 150,
+      "banned_phrases": [
+        "just checking in",
+        "circle back",
+        "synergy",
+        "revolutionize",
+        "game-changer"
+      ],
+      "business_noun": "business",
+      "timezone": "America/New_York",
+      "price_reply": "Great question - it's completely free. I build and install the whole system for you, you use it on your own leads, and then you decide if you want to keep it.\n\nAre you open to a 15-min call in the next hour? I can show you exactly how it would work for you."
+    }
+  ],
+  "campaigns": [
+    {
+      "campaign_id": "00000000-0000-0000-0000-000000000000",
+      "campaign_name": "Example campaign",
+      "offer_key": "speed-to-lead",
+      "live": false
+    }
+  ]
+}

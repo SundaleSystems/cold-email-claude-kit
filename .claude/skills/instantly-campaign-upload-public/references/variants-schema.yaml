@@ -1,0 +1,50 @@
+# variants.yaml schema — structure only, no example content.
+# /campaign-copywriting fills this in with actual copy. Do not ship subject/body content in this schema file.
+
+name: "REQUIRED — campaign name shown in Instantly UI"
+
+schedule:
+  timezone: America/New_York       # any IANA timezone
+  days: [1, 2, 3, 4, 5]             # 1=Mon ... 7=Sun (yaml convention, unchanged).
+                                    # Instantly's API uses "0"=Sunday ... "6"=Saturday —
+                                    # the upload script converts (yaml day d → Instantly key d % 7).
+  start_hour: "08:00"               # HH:MM 24-hour
+  end_hour: "17:00"
+  min_time_btw_emails: 10           # minutes (Instantly `email_gap`)
+  max_leads_per_day: 30             # Instantly campaign `daily_limit`
+
+inbox_selection:
+  tag: active                       # inbox tag to filter by (must exist in Instantly — see /instantly-inbox-manager)
+  count: 20                         # how many to attach (LRU by 7-day sent volume)
+
+sequences:
+  - step: 1                         # REQUIRED, sequential integers starting at 1
+    delay_days: 0                   # days after previous step (step 1 = 0).
+                                    # Instantly's `delay` means "wait AFTER this step" —
+                                    # the upload script shifts these values accordingly.
+    variants:                       # 1 to 3 variants (A/B/C)
+      - label: A                    # REQUIRED, one of A, B, C.
+                                    # Labels map to variant array order in Instantly:
+                                    # analytics report variant 0=A, 1=B, 2=C.
+        subject: ""                 # subject line (populated by /campaign-copywriting)
+        body: ""                    # full email body with {{merge_tags}}
+      - label: B
+        subject: ""
+        body: ""
+      - label: C
+        subject: ""
+        body: ""
+
+  - step: 2
+    delay_days: 3                   # threaded follow-up; subject may be empty
+    variants:
+      - label: A
+        subject: ""                 # empty string = thread as reply
+        body: ""
+
+  - step: 3
+    delay_days: 4
+    variants:
+      - label: A
+        subject: ""                 # new thread subject
+        body: ""

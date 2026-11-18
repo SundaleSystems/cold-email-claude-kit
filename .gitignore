@@ -1,0 +1,37 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+secrets
+*.pem
+
+# Lead data and client work — stays on your machine
+Lead-Lists/**/*
+!Lead-Lists/README.md
+!Lead-Lists/*/
+!Lead-Lists/*/.gitkeep
+profiles/*
+!profiles/README.md
+*.csv
+*.xlsx
+**/work/
+
+# Runtime output
+account-manager/clients/*
+!account-manager/clients/example-client/
+account-manager/logs/
+reply-gate/sandbox/out/
+reply-gate/webhook-url.txt
+phone-hunt/webhook-url.txt
+**/supabase/.temp/
+ui/sessions/
+*.log
+*.jsonl
+
+# Tooling
+node_modules/
+dist/
+.DS_Store
+.gstack/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

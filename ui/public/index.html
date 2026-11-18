@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Outbound Agents</title>
+<style>
+  :root { --bg:#f3f3f4; --panel:#fff; --line:#e6e6e9; --text:#1a1a1f; --muted:#7a7a85; --bubble:#f1f1f4; --me:#111114; --accent:#7c5cff; }
+  * { box-sizing:border-box; }
+  html,body { height:100%; margin:0; background:var(--bg); color:var(--text); font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,Segoe UI,Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
+  .topbar { height:60px; display:flex; align-items:center; padding:0 32px; gap:28px; background:#fff; border-bottom:1px solid var(--line); }
+  .topbar .logo { font-weight:700; letter-spacing:-.2px; display:flex; align-items:center; gap:10px; }
+  .topbar .logo i { width:22px; height:22px; border-radius:6px; background:linear-gradient(135deg,#7c5cff,#ff8a3d); display:inline-block; }
+  .topbar nav a { color:var(--text); text-decoration:none; margin-right:22px; font-size:14.5px; }
+  .topbar .right { margin-left:auto; display:flex; gap:10px; }
+  .btn { border:1px solid var(--line); background:#fff; border-radius:999px; padding:9px 18px; font-size:14px; cursor:pointer; }
+  .btn.dark { background:#111; color:#fff; border-color:#111; }
+  .app { display:flex; justify-content:center; padding:22px 24px; height:calc(100% - 60px); }
+  .win { width:min(1330px,100%); height:100%; display:grid; grid-template-columns:380px 1fr; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:var(--panel); box-shadow:0 1px 2px rgba(0,0,0,.04),0 20px 50px -30px rgba(0,0,0,.25); }
+  .side { border-right:1px solid var(--line); display:flex; flex-direction:column; }
+  .side .head { height:52px; display:flex; align-items:center; padding:0 18px; gap:8px; }
+  .dots span { width:12px; height:12px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .dots .r{background:#ff5f57}.dots .y{background:#febc2e}.dots .g{background:#28c840}
+  .side .head .plus { margin-left:auto; color:var(--muted); font-size:22px; cursor:pointer; }
+  .search { margin:4px 16px 10px; background:var(--bubble); border-radius:12px; padding:10px 14px; color:var(--muted); display:flex; gap:8px; align-items:center; }
+  .search input { border:0; background:transparent; outline:0; font:inherit; width:100%; }
+  .agent { display:flex; gap:14px; padding:12px 16px; margin:2px 10px; border-radius:14px; cursor:pointer; align-items:center; }
+  .agent:hover { background:#f6f6f8; } .agent.active { background:var(--bubble); }
+  .avatar { width:44px; height:44px; border-radius:50%; flex:none; position:relative; }
+  .avatar::after { content:""; position:absolute; left:14px; top:14px; width:16px; height:12px; border-radius:6px 6px 8px 8px/6px 6px 9px 9px; background:rgba(255,255,255,.9); }
+  .avatar.busy { box-shadow:0 0 0 3px #fff,0 0 0 5px var(--accent); }
+  .agent .body { min-width:0; flex:1; }
+  .agent .row { display:flex; justify-content:space-between; align-items:baseline; }
+  .agent .name { font-weight:600; font-size:16px; } .agent .time { color:var(--muted); font-size:13px; }
+  .agent .prev { color:var(--muted); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+  .side .me { margin-top:auto; padding:18px 22px; display:flex; align-items:center; gap:12px; font-weight:500; border-top:1px solid var(--line); }
+  .side .me b { width:34px; height:34px; border-radius:50%; background:#eee; display:inline-flex; align-items:center; justify-content:center; font-size:12px; color:#555; }
+  .main { display:flex; flex-direction:column; min-width:0; }
+  .main .head { height:52px; display:flex; align-items:center; padding:0 22px; gap:10px; border-bottom:1px solid var(--line); font-weight:600; }
+  .main .head .dot { width:16px; height:16px; border-radius:50%; }
+  .main .head .reset { margin-left:auto; color:var(--muted); font-weight:400; font-size:13px; cursor:pointer; }
+  .thread { flex:1; overflow:auto; padding:26px 30px; display:flex; flex-direction:column; gap:14px; }
+  .msg { max-width:72%; padding:14px 18px; border-radius:18px; white-space:pre-wrap; word-wrap:break-word; }
+  .msg.agent { background:var(--bubble); align-self:flex-start; border-top-left-radius:6px; }
+  .msg.me { background:var(--me); color:#fff; align-self:flex-end; border-top-right-radius:6px; }
+  .msg.agent a { color:var(--accent); }
+  .card { align-self:flex-start; max-width:72%; background:var(--bubble); border-radius:16px; padding:14px 18px; }
+  .card .t { display:flex; align-items:center; gap:10px; font-weight:600; }
+  .card .t .pill { margin-left:auto; font-size:12.5px; font-weight:500; background:#e9e9ee; color:#555; border-radius:999px; padding:3px 10px; }
+  .card .t .pill.working { background:#fff3e6; color:#b75d00; }
+  .card .step { color:#555; font-size:14px; margin-top:6px; }
+  .card .step code { background:#fff; border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:12.5px; }
+  .thinking { display:flex; align-items:center; gap:12px; color:var(--muted); align-self:flex-start; }
+  .thinking .avatar { width:40px; height:40px; animation:pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:.85} 50%{transform:scale(1.06);opacity:1} }
+  .sys { align-self:center; color:var(--muted); font-size:13px; }
+  .composer { padding:14px 22px 20px; }
+  .composer .box { display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:999px; padding:8px 10px 8px 14px; background:#fff; }
+  .composer .box .plus { width:30px; height:30px; border-radius:50%; background:var(--bubble); display:inline-flex; align-items:center; justify-content:center; color:#666; font-size:20px; }
+  .composer textarea { flex:1; border:0; outline:0; resize:none; font:inherit; max-height:140px; padding:6px 0; background:transparent; }
+  .composer .mic { width:40px; height:40px; border-radius:50%; background:#111; color:#fff; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; border:0; }
+  .composer .mic.rec { background:#ff3b30; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo"><i></i> Outbound</div>
+    <nav><a href="#">Outbound</a><a href="#">Replies</a><a href="#">Lists</a><a href="#">Reports</a></nav>
+    <div class="right"><button class="btn" id="btnDaily">Run daily check</button><a class="btn dark" href="https://app.instantly.ai" target="_blank" style="text-decoration:none">Open Instantly</a></div>
+  </div>
+  <div class="app"><div class="win">
+    <aside class="side">
+      <div class="head"><span class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></span><span class="plus" title="New agent (edit ui/agents.ts)">+</span></div>
+      <div class="search">🔍 <input id="q" placeholder="Search" /></div>
+      <div id="agents"></div>
+      <div class="me"><b>ME</b> You</div>
+    </aside>
+    <section class="main">
+      <div class="head"><span class="dot" id="hdot"></span><span id="hname">—</span><span class="reset" id="reset" title="Start a fresh conversation with this agent">reset</span></div>
+      <div class="thread" id="thread"></div>
+      <div class="composer"><div class="box">
+        <span class="plus">+</span>
+        <textarea id="input" rows="1" placeholder="Message"></textarea>
+        <button class="mic" id="mic" title="Dictate">🎤</button>
+      </div></div>
+    </section>
+  </div></div>
+<script>
+const $ = (s) => document.querySelector(s);
+let agents = [], current = null, busy = false;
+const av = (a, cls="") => `<div class="avatar ${cls}" style="background:linear-gradient(135deg,${a.color},${a.color2})"></div>`;
+const fmtTime = (ts) => { if (!ts) return ""; const d = new Date(ts), now = new Date(); const same = d.toDateString() === now.toDateString(); return same ? d.toLocaleTimeString([], {hour:"numeric", minute:"2-digit"}) : (now - d < 2*864e5 ? "Yesterday" : d.toLocaleDateString()); };
+
+async function loadAgents() {
+  agents = await (await fetch("/api/agents")).json();
+  const q = $("#q").value.toLowerCase();
+  $("#agents").innerHTML = agents.filter(a => a.name.toLowerCase().includes(q)).map(a => `
+    <div class="agent ${current===a.id?"active":""}" data-id="${a.id}">${av(a, a.busy?"busy":"")}
+      <div class="body"><div class="row"><span class="name">${a.name}</span><span class="time">${a.busy?"Typing…":fmtTime(a.lastTs)}</span></div>
+      <div class="prev">${a.busy ? "Working on it…" : a.status}</div></div></div>`).join("");
+  document.querySelectorAll(".agent").forEach(el => el.onclick = () => select(el.dataset.id));
+  if (!current && agents[0]) select(agents[0].id);
+}
+function render(text) {
+  const esc = text.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  return esc.replace(/`([^`]+)`/g,"<code>$1</code>").replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>").replace(/(https?:\/\/[^\s)]+)/g,'<a href="$1" target="_blank">$1</a>');
+}
+async function select(id) {
+  current = id; const a = agents.find(x => x.id===id);
+  $("#hname").textContent = a.name; $("#hdot").style.background = `linear-gradient(135deg,${a.color},${a.color2})`;
+  const msgs = await (await fetch(`/api/agents/${id}/messages`)).json();
+  const t = $("#thread"); t.innerHTML = `<div class="sys">${a.tagline}</div>`;
+  for (const m of msgs) { if (m.tools?.length) card(m.tools, false); bubble(m.role==="user"?"me":"agent", m.text); }
+  t.scrollTop = t.scrollHeight; loadAgents();
+}
+function bubble(cls, text) { const d = document.createElement("div"); d.className = `msg ${cls}`; d.innerHTML = cls==="agent" ? render(text) : text.replace(/</g,"&lt;"); $("#thread").appendChild(d); $("#thread").scrollTop = 1e9; return d; }
+function card(tools, working) {
+  const d = document.createElement("div"); d.className = "card";
+  d.innerHTML = `<div class="t">Computer <span class="pill ${working?"working":""}">${working?"✳ Working":"Done"}</span></div>` + tools.map(s => `<div class="step"><code>${s.name}</code> ${s.detail.replace(/</g,"&lt;")}</div>`).join("");
+  $("#thread").appendChild(d); $("#thread").scrollTop = 1e9; return d;
+}
+async function send(text) {
+  if (!text.trim() || busy || !current) return;
+  busy = true; const agentId = current; bubble("me", text); $("#input").value = ""; autosize();
+  const a = agents.find(x => x.id===agentId);
+  const think = document.createElement("div"); think.className = "thinking"; think.innerHTML = `${av(a)} Thinking`; $("#thread").appendChild(think);
+  let cardEl = null, steps = [], textEl = null; loadAgents();
+  const res = await fetch(`/api/agents/${agentId}/chat`, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ text }) });
+  if (!res.ok) { think.remove(); bubble("agent", (await res.json()).error || "Error"); busy = false; return; }
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = "";
+  while (true) {
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream:true });
+    let i; while ((i = buf.indexOf("\n\n")) >= 0) {
+      const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+      const ev = (chunk.match(/^event: (.*)$/m) || [])[1]; const data = JSON.parse((chunk.match(/^data: (.*)$/m) || [,"{}"])[1]);
+      if (ev === "tool") { steps.push(data); if (cardEl) cardEl.remove(); cardEl = card(steps, true); $("#thread").appendChild(think); }
+      if (ev === "text") { if (cardEl) { cardEl.querySelector(".pill").className = "pill"; cardEl.querySelector(".pill").textContent = "Done"; } textEl = bubble("agent", data.text); $("#thread").appendChild(think); }
+      if (ev === "done") { think.remove(); }
+    }
+  }
+  think.remove(); if (cardEl) { cardEl.querySelector(".pill").className = "pill"; cardEl.querySelector(".pill").textContent = "Done"; }
+  busy = false; loadAgents();
+}
+function autosize() { const t = $("#input"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 140) + "px"; }
+$("#input").addEventListener("input", autosize);
+$("#input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send($("#input").value); } });
+$("#q").addEventListener("input", loadAgents);
+$("#reset").onclick = async () => { if (!current || !confirm("Start a fresh conversation? The agent forgets this thread.")) return; await fetch(`/api/agents/${current}/reset`, { method:"POST" }); select(current); };
+$("#btnDaily").onclick = () => { select("account-manager").then(() => send("Run today's daily check for real and tell me what you did and what needs me.")); };
+// Dictation via the browser's speech recognition (Chrome/Safari). Falls back silently.
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition; let rec = null;
+$("#mic").onclick = () => { if (!SR) return alert("Dictation isn't available in this browser."); if (rec) { rec.stop(); return; }
+  rec = new SR(); rec.interimResults = true; rec.continuous = true; $("#mic").classList.add("rec");
+  rec.onresult = (e) => { $("#input").value = Array.from(e.results).map(r => r[0].transcript).join(" "); autosize(); };
+  rec.onend = () => { $("#mic").classList.remove("rec"); rec = null; }; rec.start(); };
+loadAgents(); setInterval(() => { if (!busy) loadAgents(); }, 15000);
+</script>
+</body>
+</html>
